@@ -5,7 +5,7 @@
 
 int main() {
     // Initialize the graphics context
-    Renderer renderer;
+    Renderer renderer(800, 600);
     if (!renderer.init()) {
         std::cerr << "Failed to initialize the renderer." << std::endl;
         return -1;

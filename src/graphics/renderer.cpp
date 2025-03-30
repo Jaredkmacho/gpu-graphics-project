@@ -6,7 +6,9 @@
 #include <GLFW/glfw3.h>
 #include "renderer.h"
 
-Renderer::Renderer() : window(nullptr), shaderProgram(0), VAO(0), VBO(0) {}
+Renderer::Renderer(int width, int height) 
+    : window(nullptr), shaderProgram(0), VAO(0), VBO(0), time(0.0f),
+      windowWidth(width), windowHeight(height) {}
 
 Renderer::~Renderer() {
     cleanup();
@@ -20,7 +22,7 @@ bool Renderer::init() {
     }
 
     // Create a windowed mode window and its OpenGL context
-    window = glfwCreateWindow(800, 600, "GPU Graphics Project", NULL, NULL);
+    window = glfwCreateWindow(windowWidth, windowHeight, "GPU Graphics Project", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -85,6 +87,10 @@ bool Renderer::loadShaders(const std::string& vertexShaderPath, const std::strin
     std::string vertexShaderSource = loadShader(vertexShaderPath);
     std::string fragmentShaderSource = loadShader(fragmentShaderPath);
 
+    if (vertexShaderSource.empty() || fragmentShaderSource.empty()) {
+        return false;
+    }
+
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
@@ -103,9 +109,17 @@ bool Renderer::loadShaders(const std::string& vertexShaderPath, const std::strin
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
+    checkShaderCompileErrors(shaderProgram, "PROGRAM");
 
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+
+    // Get uniform location after shader program is created and linked
+    colorUniformLocation = glGetUniformLocation(shaderProgram, "triangleColor");
+    if (colorUniformLocation == -1) {
+        std::cerr << "Failed to get uniform location for triangleColor" << std::endl;
+        return false;
+    }
 
     return true;
 }
@@ -129,10 +143,25 @@ void Renderer::checkShaderCompileErrors(GLuint shader, const std::string& type) 
 }
 
 void Renderer::render() {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
     glUseProgram(shaderProgram);
-    
-    // Draw the triangle
+
+    // Update time
+    time += 0.01f;
+    if (time > 2.0f * 3.14159f) {
+        time = 0.0f;
+    }
+
+    // Create a rainbow effect using sine waves
+    float red = (sin(time) + 1.0f) / 2.0f;
+    float green = (sin(time + 2.0944f) + 1.0f) / 2.0f;  // Phase shift by 2π/3
+    float blue = (sin(time + 4.1888f) + 1.0f) / 2.0f;   // Phase shift by 4π/3
+
+    // Set the color uniform
+    glUniform4f(colorUniformLocation, red, green, blue, 1.0f);
+
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
