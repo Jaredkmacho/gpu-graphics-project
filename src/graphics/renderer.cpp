@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include "renderer.h"
@@ -61,14 +62,20 @@ bool Renderer::init() {
 }
 
 std::string Renderer::loadShader(const std::string& filePath) {
-    std::ifstream shaderFile(filePath);
+    std::filesystem::path path(filePath);
+    if (!std::filesystem::exists(path)) {
+        std::cerr << "Shader file not found: " << std::filesystem::absolute(path) << std::endl;
+        return "";
+    }
+
+    std::ifstream shaderFile(path);
     std::stringstream shaderStream;
 
     if (shaderFile) {
         shaderStream << shaderFile.rdbuf();
         shaderFile.close();
     } else {
-        std::cerr << "Could not open shader file: " << filePath << std::endl;
+        std::cerr << "Could not open shader file: " << std::filesystem::absolute(path) << std::endl;
     }
 
     return shaderStream.str();

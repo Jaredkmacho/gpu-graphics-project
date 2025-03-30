@@ -18,11 +18,9 @@ int main() {
     }
 
     // Main loop for rendering
-    while (true) {
+    while (!glfwWindowShouldClose(renderer.getWindow())) {
         renderer.render();
-        
-        // Handle window events and check for exit condition
-        // (This part would typically involve a windowing library)
+        glfwPollEvents();  // Process window events
     }
 
     return 0;

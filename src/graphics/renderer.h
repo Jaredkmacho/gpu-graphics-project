@@ -12,6 +12,7 @@ public:
     bool loadShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
     void render();
     void cleanup();
+    GLFWwindow* getWindow() { return window; }  // Getter for the window
 
 private:
     GLFWwindow* window;

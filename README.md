@@ -79,14 +79,14 @@ gpu-graphics-project
 
 4. **Build the project**:
    ```bash
-   cmake --build . --config Release
+   cmake --build .
    ```
 
 ## Usage
 After building, the executable will be available in your build directory:
 ```bash
 # From build directory
-Release\GPUGraphicsProject.exe
+Debug\GPUGraphicsProject.exe
 ```
 
 ## Development
