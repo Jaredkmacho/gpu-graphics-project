@@ -107,6 +107,40 @@
   - `program`: Program object to link
 - **Returns**: void
 
+### Uniform Management
+
+#### `glGetUniformLocation(GLuint program, const char* name)`
+- **Description**: Returns the location of a uniform variable in a shader program
+- **Parameters**:
+  - `program`: Program object to query
+  - `name`: Name of the uniform variable
+- **Returns**: Location of the uniform variable or -1 if not found
+
+#### `glUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3)`
+- **Description**: Specifies value for a vec4 uniform variable
+- **Parameters**:
+  - `location`: Location of the uniform variable
+  - `v0, v1, v2, v3`: Components of the vector (x, y, z, w)
+- **Returns**: void
+
+#### `glUniform4i(GLint location, GLint v0, GLint v1, GLint v2, GLint v3)`
+- **Description**: Specifies value for an ivec4 uniform variable
+- **Parameters**:
+  - `location`: Location of the uniform variable
+  - `v0, v1, v2, v3`: Components of the integer vector
+- **Returns**: void
+
+### Color Management
+
+#### `glClearColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha)`
+- **Description**: Sets the clear color for the color buffer
+- **Parameters**:
+  - `red`: Red component (0.0 to 1.0)
+  - `green`: Green component (0.0 to 1.0)
+  - `blue`: Blue component (0.0 to 1.0)
+  - `alpha`: Alpha component (0.0 to 1.0)
+- **Returns**: void
+
 ### Rendering
 
 #### `glClear(GLbitfield mask)`
@@ -140,6 +174,13 @@
 #### `~Renderer()`
 - **Description**: Cleans up OpenGL resources
 - **Returns**: void
+
+#### `Renderer(int width, int height)`
+- **Description**: Initializes renderer with specified window dimensions
+- **Parameters**:
+  - `width`: Window width in pixels
+  - `height`: Window height in pixels
+- **Returns**: Renderer instance
 
 ### Public Methods
 
@@ -175,4 +216,22 @@
 - **Parameters**:
   - `shader`: Shader object to check
   - `type`: Type of shader for error reporting
-- **Returns**: void 
+- **Returns**: void
+
+### Private Members
+
+#### `GLint colorUniformLocation`
+- **Description**: Location of the triangle color uniform variable in the shader program
+- **Type**: `GLint`
+
+#### `float time`
+- **Description**: Time tracking variable for animations
+- **Type**: `float`
+
+#### `int windowWidth`
+- **Description**: Width of the window in pixels
+- **Type**: `int`
+
+#### `int windowHeight`
+- **Description**: Height of the window in pixels
+- **Type**: `int` 
