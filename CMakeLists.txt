@@ -16,11 +16,22 @@ message(STATUS "VCPKG_INSTALLED_DIR: ${VCPKG_INSTALLED_DIR}")
 
 # Set include and library directories
 set(GLEW_INCLUDE_DIRS "${VCPKG_INSTALLED_DIR}/include")
-set(GLEW_LIBRARIES "${VCPKG_INSTALLED_DIR}/lib/glew32.lib")
 set(GLFW_INCLUDE_DIRS "${VCPKG_INSTALLED_DIR}/include")
-set(GLFW_LIBRARIES "${VCPKG_INSTALLED_DIR}/lib/glfw3dll.lib")
+set(GLUT_INCLUDE_DIRS "${VCPKG_INSTALLED_DIR}/include")
+
+# Set library paths based on build type
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(GLEW_LIBRARIES "${VCPKG_INSTALLED_DIR}/debug/lib/glew32d.lib")
+    set(GLFW_LIBRARIES "${VCPKG_INSTALLED_DIR}/debug/lib/glfw3dll.lib")
+    set(GLUT_LIBRARIES "${VCPKG_INSTALLED_DIR}/debug/lib/freeglutd.lib")
+else()
+    set(GLEW_LIBRARIES "${VCPKG_INSTALLED_DIR}/lib/glew32.lib")
+    set(GLFW_LIBRARIES "${VCPKG_INSTALLED_DIR}/lib/glfw3dll.lib")
+    set(GLUT_LIBRARIES "${VCPKG_INSTALLED_DIR}/lib/freeglut.lib")
+endif()
 
 # Debug information for package finding
+message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
@@ -32,6 +43,10 @@ message(STATUS "GLEW_LIBRARIES: ${GLEW_LIBRARIES}")
 find_package(glfw3 REQUIRED)
 message(STATUS "GLFW_INCLUDE_DIRS: ${GLFW_INCLUDE_DIRS}")
 message(STATUS "GLFW_LIBRARIES: ${GLFW_LIBRARIES}")
+
+find_package(FreeGLUT REQUIRED)
+message(STATUS "GLUT_INCLUDE_DIRS: ${GLUT_INCLUDE_DIRS}")
+message(STATUS "GLUT_LIBRARIES: ${GLUT_LIBRARIES}")
 
 # Enable testing
 #enable_testing()
@@ -48,6 +63,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${GLEW_INCLUDE_DIRS}
     ${GLFW_INCLUDE_DIRS}
+    ${GLUT_INCLUDE_DIRS}
 )
 
 # Main executable
@@ -58,6 +74,7 @@ add_executable(GPUGraphicsProject ${SOURCES})
 target_link_libraries(GPUGraphicsProject PRIVATE 
     ${GLEW_LIBRARIES}
     ${GLFW_LIBRARIES}
+    ${GLUT_LIBRARIES}
     opengl32
 )
 

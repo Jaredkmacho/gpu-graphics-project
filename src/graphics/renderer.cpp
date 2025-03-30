@@ -2,13 +2,20 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
-#include <GL/glew.h>
+#include <GL/glew.h>  // GLEW must be included first
+#define GLUT_NO_LIB_PRAGMA  // Prevent GLUT from defining APIENTRY
+#include <GL/glut.h>
 #include <GLFW/glfw3.h>
 #include "renderer.h"
 
 Renderer::Renderer(int width, int height) 
     : window(nullptr), shaderProgram(0), VAO(0), VBO(0), time(0.0f),
-      windowWidth(width), windowHeight(height) {}
+      windowWidth(width), windowHeight(height),
+      showFPS(false), lastTime(0.0), frameCount(0),
+      lastFPSUpdate(0.0), currentFPS(0.0),
+      targetFPS(0), frameTime(0.0) {  // Initialize FPS limit members
+    lastTime = glfwGetTime();
+}
 
 Renderer::~Renderer() {
     cleanup();
@@ -20,6 +27,11 @@ bool Renderer::init() {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return false;
     }
+
+    // Initialize GLUT
+    int argc = 1;
+    char* argv[1] = { (char*)"Something" };
+    glutInit(&argc, argv);
 
     // Create a windowed mode window and its OpenGL context
     window = glfwCreateWindow(windowWidth, windowHeight, "GPU Graphics Project", NULL, NULL);
@@ -142,17 +154,84 @@ void Renderer::checkShaderCompileErrors(GLuint shader, const std::string& type) 
     }
 }
 
+void Renderer::updateFPS() {
+    double currentTime = glfwGetTime();
+    frameCount++;
+
+    // Update FPS every second
+    if (currentTime - lastFPSUpdate >= 1.0) {
+        currentFPS = frameCount / (currentTime - lastFPSUpdate);
+        frameCount = 0;
+        lastFPSUpdate = currentTime;
+    }
+}
+
+void Renderer::displayFPS() {
+    if (!showFPS) return;
+
+    // Set up text rendering (using GLFW's built-in text rendering)
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, windowWidth, windowHeight, 0, -1, 1);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    // Disable shader program for text rendering
+    glUseProgram(0);
+
+    // Set text color (white)
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // Position the text
+    glRasterPos2i(10, 20);
+
+    // Create FPS string
+    std::string fpsText = "FPS: " + std::to_string(static_cast<int>(currentFPS));
+
+    // Draw the text
+    for (char c : fpsText) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+    }
+
+    // Restore matrices
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+
+    // Re-enable shader program
+    glUseProgram(shaderProgram);
+}
+
+void Renderer::limitFPS() {
+    if (targetFPS <= 0) return;  // No limit if targetFPS is 0 or negative
+
+    double currentTime = glfwGetTime();
+    frameTime = 1.0 / targetFPS;  // Calculate time between frames
+
+    // If we're running too fast, wait
+    if (currentTime - lastTime < frameTime) {
+        double waitTime = frameTime - (currentTime - lastTime);
+        glfwWaitEventsTimeout(waitTime);
+    }
+
+    lastTime = glfwGetTime();  // Update last frame time
+}
+
 void Renderer::render() {
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(shaderProgram);
 
-    // Update time
-    time += 0.01f;
-    if (time > 2.0f * 3.14159f) {
-        time = 0.0f;
-    }
+    // Update time using real time instead of frame-based time
+    double currentTime = glfwGetTime();
+    time = static_cast<float>(currentTime * 1);  // Slower animation speed (0.5 cycles per second)
+    
+    // Keep the animation continuous by using modulo
+    time = fmod(time, 2.0f * 3.14159f);
 
     // Create a rainbow effect using sine waves
     float red = (sin(time) + 1.0f) / 2.0f;
@@ -165,6 +244,13 @@ void Renderer::render() {
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
+
+    // Update and display FPS
+    updateFPS();
+    displayFPS();
+
+    // Limit FPS if target is set
+    limitFPS();
 
     glfwSwapBuffers(window);
 }
