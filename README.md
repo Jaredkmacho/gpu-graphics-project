@@ -6,7 +6,7 @@ The GPU Graphics Project is a modern C++ graphics application that leverages Ope
 ## Demo
 Here's a demonstration of the project in action:
 
-https://github.com/Jaredkmacho/gpu-graphics-project/raw/main/docs/video/rainbow-triangle.mp4
+![Demo Video](docs/video/rainbow-triangle.mp4)
 
 ## Features
 - Modern OpenGL rendering pipeline
