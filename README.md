@@ -3,6 +3,11 @@
 ## Overview
 The GPU Graphics Project is a modern C++ graphics application that leverages OpenGL for high-performance graphics rendering on Windows. This project serves as a foundation for creating graphics applications that utilize modern GPU features for rendering high-quality visuals.
 
+## Demo
+Here's a demonstration of the project in action:
+
+![Demo Video](docs/video/rainbow-triangle.mp4)
+
 ## Features
 - Modern OpenGL rendering pipeline
 - Shader-based graphics processing
