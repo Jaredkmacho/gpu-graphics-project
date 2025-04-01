@@ -48,6 +48,10 @@ find_package(FreeGLUT REQUIRED)
 message(STATUS "GLUT_INCLUDE_DIRS: ${GLUT_INCLUDE_DIRS}")
 message(STATUS "GLUT_LIBRARIES: ${GLUT_LIBRARIES}")
 
+# Find ImGui package
+find_package(imgui CONFIG REQUIRED)
+message(STATUS "ImGui found: ${imgui_FOUND}")
+
 # Enable testing
 #enable_testing()
 #include(FetchContent)
@@ -64,6 +68,7 @@ include_directories(
     ${GLEW_INCLUDE_DIRS}
     ${GLFW_INCLUDE_DIRS}
     ${GLUT_INCLUDE_DIRS}
+    ${VCPKG_INSTALLED_DIR}/include
 )
 
 # Main executable
@@ -75,6 +80,7 @@ target_link_libraries(GPUGraphicsProject PRIVATE
     ${GLEW_LIBRARIES}
     ${GLFW_LIBRARIES}
     ${GLUT_LIBRARIES}
+    imgui::imgui
     opengl32
 )
 
