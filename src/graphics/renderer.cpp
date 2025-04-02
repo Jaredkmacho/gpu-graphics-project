@@ -227,7 +227,12 @@ void Renderer::limitFPS() {
     // If we're running too fast, wait
     if (currentTime - lastTime < frameTime) {
         double waitTime = frameTime - (currentTime - lastTime);
-        glfwWaitEventsTimeout(waitTime);
+        // Wait 99% of the time waiting for events (avoids 100% CPU usage)
+        glfwWaitEventsTimeout(waitTime * 0.99);
+        // Wait the remaining time
+        while (currentTime - lastTime < frameTime) {
+            currentTime = glfwGetTime();
+        }
     }
 
     lastTime = glfwGetTime();  // Update last frame time
