@@ -2,13 +2,29 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
-#include <GL/glew.h>
+#include <GL/glew.h>  // GLEW must be included first
+#define GLUT_NO_LIB_PRAGMA  // Prevent GLUT from defining APIENTRY
+#include <GL/glut.h>
 #include <GLFW/glfw3.h>
 #include "renderer.h"
 
 Renderer::Renderer(int width, int height) 
     : window(nullptr), shaderProgram(0), VAO(0), VBO(0), time(0.0f),
-      windowWidth(width), windowHeight(height) {}
+      windowWidth(width), windowHeight(height),
+      showFPS(false), lastTime(0.0), frameCount(0),
+      lastFPSUpdate(0.0), currentFPS(0.0),
+      targetFPS(0), frameTime(0.0),
+      rainbowMode(true), animationSpeed(1.0f),
+      currentShape(0), squareVAO(0), squareVBO(0),
+      circleVAO(0), circleVBO(0) {
+    lastTime = glfwGetTime();
+    backgroundColor[0] = 0.2f;
+    backgroundColor[1] = 0.3f;
+    backgroundColor[2] = 0.3f;
+    shapeColor[0] = 1.0f;
+    shapeColor[1] = 1.0f;
+    shapeColor[2] = 1.0f;
+}
 
 Renderer::~Renderer() {
     cleanup();
@@ -20,6 +36,11 @@ bool Renderer::init() {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return false;
     }
+
+    // Initialize GLUT
+    int argc = 1;
+    char* argv[1] = { (char*)"Something" };
+    glutInit(&argc, argv);
 
     // Create a windowed mode window and its OpenGL context
     window = glfwCreateWindow(windowWidth, windowHeight, "GPU Graphics Project", NULL, NULL);
@@ -59,6 +80,10 @@ bool Renderer::init() {
     // Set vertex attributes
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+
+    // Create shapes
+    createSquare();
+    createCircle();
 
     return true;
 }
@@ -142,34 +167,211 @@ void Renderer::checkShaderCompileErrors(GLuint shader, const std::string& type) 
     }
 }
 
-void Renderer::render() {
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+void Renderer::updateFPS() {
+    double currentTime = glfwGetTime();
+    frameCount++;
 
-    glUseProgram(shaderProgram);
+    // Update FPS every second
+    if (currentTime - lastFPSUpdate >= 1.0) {
+        currentFPS = frameCount / (currentTime - lastFPSUpdate);
+        frameCount = 0;
+        lastFPSUpdate = currentTime;
+    }
+}
 
-    // Update time
-    time += 0.01f;
-    if (time > 2.0f * 3.14159f) {
-        time = 0.0f;
+void Renderer::displayFPS() {
+    if (!showFPS) return;
+
+    // Set up text rendering (using GLFW's built-in text rendering)
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, windowWidth, windowHeight, 0, -1, 1);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    // Disable shader program for text rendering
+    glUseProgram(0);
+
+    // Set text color (white)
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // Position the text
+    glRasterPos2i(10, 20);
+
+    // Create FPS string
+    std::string fpsText = "FPS: " + std::to_string(static_cast<int>(currentFPS));
+
+    // Draw the text
+    for (char c : fpsText) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
     }
 
-    // Create a rainbow effect using sine waves
-    float red = (sin(time) + 1.0f) / 2.0f;
-    float green = (sin(time + 2.0944f) + 1.0f) / 2.0f;  // Phase shift by 2π/3
-    float blue = (sin(time + 4.1888f) + 1.0f) / 2.0f;   // Phase shift by 4π/3
+    // Restore matrices
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
 
-    // Set the color uniform
-    glUniform4f(colorUniformLocation, red, green, blue, 1.0f);
+    // Re-enable shader program
+    glUseProgram(shaderProgram);
+}
 
-    glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+void Renderer::limitFPS() {
+    if (targetFPS <= 0) return;  // No limit if targetFPS is 0 or negative
+
+    double currentTime = glfwGetTime();
+    frameTime = 1.0 / targetFPS;  // Calculate time between frames
+
+    // If we're running too fast, wait
+    if (currentTime - lastTime < frameTime) {
+        double waitTime = frameTime - (currentTime - lastTime);
+        // Wait 99% of the time waiting for events (avoids 100% CPU usage)
+        glfwWaitEventsTimeout(waitTime * 0.99);
+        // Wait the remaining time
+        while (currentTime - lastTime < frameTime) {
+            currentTime = glfwGetTime();
+        }
+    }
+
+    lastTime = glfwGetTime();  // Update last frame time
+}
+
+void Renderer::createSquare() {
+    float vertices[] = {
+        -0.5f, -0.5f, 0.0f,
+         0.5f, -0.5f, 0.0f,
+         0.5f,  0.5f, 0.0f,
+        -0.5f,  0.5f, 0.0f
+    };
+    unsigned int indices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    glGenVertexArrays(1, &squareVAO);
+    glGenBuffers(1, &squareVBO);
+    GLuint EBO;
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(squareVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, squareVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+}
+
+void Renderer::createCircle() {
+    const int segments = 32;
+    std::vector<float> vertices;
+    vertices.reserve(segments * 3 + 3);  // +3 for center point
+
+    // Center point
+    vertices.push_back(0.0f);
+    vertices.push_back(0.0f);
+    vertices.push_back(0.0f);
+
+    // Circle points
+    for (int i = 0; i <= segments; i++) {
+        float angle = 2.0f * 3.14159f * float(i) / float(segments);
+        vertices.push_back(0.5f * cos(angle));
+        vertices.push_back(0.5f * sin(angle));
+        vertices.push_back(0.0f);
+    }
+
+    glGenVertexArrays(1, &circleVAO);
+    glGenBuffers(1, &circleVBO);
+
+    glBindVertexArray(circleVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, circleVBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+}
+
+void Renderer::cleanupShapes() {
+    if (squareVAO) {
+        glDeleteVertexArrays(1, &squareVAO);
+        squareVAO = 0;
+    }
+    if (squareVBO) {
+        glDeleteBuffers(1, &squareVBO);
+        squareVBO = 0;
+    }
+    if (circleVAO) {
+        glDeleteVertexArrays(1, &circleVAO);
+        circleVAO = 0;
+    }
+    if (circleVBO) {
+        glDeleteBuffers(1, &circleVBO);
+        circleVBO = 0;
+    }
+}
+
+void Renderer::render() {
+    // Get the current window size
+    int display_w, display_h;
+    glfwGetFramebufferSize(window, &display_w, &display_h);
+    
+    // Set up the viewport
+    glViewport(0, 0, display_w, display_h);
+    
+    // Clear the screen
+    glClearColor(backgroundColor[0], backgroundColor[1], backgroundColor[2], 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Use our shader program
+    glUseProgram(shaderProgram);
+
+    // Update time using real time instead of frame-based time
+    double currentTime = glfwGetTime();
+    time = static_cast<float>(currentTime * animationSpeed);
+    
+    // Keep the animation continuous by using modulo
+    time = fmod(time, 2.0f * 3.14159f);
+
+    // Set color based on mode
+    if (rainbowMode) {
+        float red = (sin(time) + 1.0f) / 2.0f;
+        float green = (sin(time + 2.0944f) + 1.0f) / 2.0f;
+        float blue = (sin(time + 4.1888f) + 1.0f) / 2.0f;
+        glUniform4f(colorUniformLocation, red, green, blue, 1.0f);
+    } else {
+        glUniform4f(colorUniformLocation, shapeColor[0], shapeColor[1], shapeColor[2], 1.0f);
+    }
+
+    // Draw current shape
+    switch (currentShape) {
+        case 0:  // Triangle
+            glBindVertexArray(VAO);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            break;
+        case 1:  // Square
+            glBindVertexArray(squareVAO);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            break;
+        case 2:  // Circle
+            glBindVertexArray(circleVAO);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 34);  // 32 segments + center + first point
+            break;
+    }
     glBindVertexArray(0);
 
-    glfwSwapBuffers(window);
+    // Update and display FPS
+    updateFPS();
+    displayFPS();
+
+    // Limit FPS if target is set
+    limitFPS();
 }
 
 void Renderer::cleanup() {
+    cleanupShapes();
     if (VAO) {
         glDeleteVertexArrays(1, &VAO);
         VAO = 0;

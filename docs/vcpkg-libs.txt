@@ -1,0 +1,6 @@
+The following commands are used to download the required vcpkg libraries:
+
+vcpkg install glfw3:x64-windows
+vcpkg install glew:x64-windows
+vcpkg install glm:x64-windows
+vcpkg install imgui[glfw-binding,opengl3-binding]:x64-windows
