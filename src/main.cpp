@@ -43,8 +43,9 @@ int main() {
     glfwSetKeyCallback(window, key_callback);
     std::cout << "Key callback set up" << std::endl;
 
-    // Load shaders
-    if (!renderer.loadShaders("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl")) {
+    // Load all shaders
+    if (!renderer.loadShaders("default", "shaders/default_vertex.glsl", "shaders/default_fragment.glsl") ||
+        !renderer.loadShaders("circle", "shaders/circle_vertex.glsl", "shaders/circle_fragment.glsl")) {
         std::cerr << "Failed to load shaders." << std::endl;
         return -1;
     }

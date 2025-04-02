@@ -2,6 +2,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <string>
+#include <map>
 
 class Renderer {
 public:
@@ -9,7 +10,7 @@ public:
     ~Renderer();
 
     bool init();
-    bool loadShaders(const std::string& vertexPath, const std::string& fragmentPath);
+    bool loadShaders(const std::string& name, const std::string& vertexPath, const std::string& fragmentPath);
     void render();
     void cleanup();
     GLFWwindow* getWindow() { return window; }  // Getter for the window
@@ -33,9 +34,9 @@ public:
 
 private:
     GLFWwindow* window;
-    GLuint shaderProgram;
-    GLuint VAO;
-    GLuint VBO;
+    std::map<std::string, GLuint> shaderPrograms;  // Map to store multiple shader programs
+    GLuint triangleVAO;
+    GLuint triangleVBO;
     GLuint squareVAO;
     GLuint squareVBO;
     GLuint circleVAO;
@@ -49,9 +50,10 @@ private:
     void limitFPS();   // Limit frame rate
     void createSquare();
     void createCircle();
+    void createTriangle();
     void cleanupShapes();
 
-    GLint colorUniformLocation;  // Add uniform location
+    std::map<std::string, GLint> colorUniformLocations;  // Map to store uniform locations for each shader
     float time;  // Add time tracking
     int windowWidth;   // Add window dimensions
     int windowHeight;

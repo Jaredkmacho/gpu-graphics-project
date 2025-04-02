@@ -84,10 +84,13 @@ target_link_libraries(GPUGraphicsProject PRIVATE
     opengl32
 )
 
-# Copy shader files to build directory
+# Copy all shader files to build directory
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/Debug/shaders)
 file(COPY ${CMAKE_SOURCE_DIR}/shaders/vertex_shader.glsl DESTINATION ${CMAKE_BINARY_DIR}/Debug/shaders)
 file(COPY ${CMAKE_SOURCE_DIR}/shaders/fragment_shader.glsl DESTINATION ${CMAKE_BINARY_DIR}/Debug/shaders)
+file(COPY ${CMAKE_SOURCE_DIR}/shaders/circle.vert DESTINATION ${CMAKE_BINARY_DIR}/Debug/shaders)
+file(COPY ${CMAKE_SOURCE_DIR}/shaders/circle.frag DESTINATION ${CMAKE_BINARY_DIR}/Debug/shaders)
+
 
 # Add tests directory
 #add_subdirectory(tests)
