@@ -8,15 +8,25 @@
 #include <GLFW/glfw3.h>
 #include "renderer.h"
 
-Renderer::Renderer(int width, int height) 
-    : window(nullptr), shaderProgram(0), VAO(0), VBO(0), time(0.0f),
-      windowWidth(width), windowHeight(height),
-      showFPS(false), lastTime(0.0), frameCount(0),
-      lastFPSUpdate(0.0), currentFPS(0.0),
-      targetFPS(0), frameTime(0.0),
-      rainbowMode(true), animationSpeed(1.0f),
-      currentShape(0), squareVAO(0), squareVBO(0),
-      circleVAO(0), circleVBO(0) {
+Renderer::Renderer(int width, int height) : window(nullptr),
+                                            shaderPrograms(),
+                                            colorUniformLocations(),
+                                            triangleVAO(0), triangleVBO(0),
+                                            squareVAO(0), squareVBO(0),
+                                            circleVAO(0), circleVBO(0),
+                                            windowWidth(width),
+                                            windowHeight(height),
+                                            showFPS(false),
+                                            lastTime(0.0),
+                                            frameCount(0),
+                                            lastFPSUpdate(0.0),
+                                            currentFPS(0.0),
+                                            targetFPS(0),
+                                            frameTime(0.0),
+                                            time(0.0f),
+                                            rainbowMode(true),
+                                            animationSpeed(1.0f),
+                                            currentShape(0) {
     lastTime = glfwGetTime();
     backgroundColor[0] = 0.2f;
     backgroundColor[1] = 0.3f;
@@ -59,31 +69,14 @@ bool Renderer::init() {
         return false;
     }
 
-    // Create and bind VAO(Vertex Array Object)
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-
-    // Create and bind VBO(Vertex Buffer Object)
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-    // Define triangle vertices
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.0f,  0.5f, 0.0f
-    };
-
-    // Copy vertex data into VBO
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Set vertex attributes
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    // Enable blending for smooth circle edges
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Create shapes
     createSquare();
     createCircle();
+    createTriangle();
 
     return true;
 }
@@ -108,7 +101,7 @@ std::string Renderer::loadShader(const std::string& filePath) {
     return shaderStream.str();
 }
 
-bool Renderer::loadShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath) {
+bool Renderer::loadShaders(const std::string& name, const std::string& vertexShaderPath, const std::string& fragmentShaderPath) {
     std::string vertexShaderSource = loadShader(vertexShaderPath);
     std::string fragmentShaderSource = loadShader(fragmentShaderPath);
 
@@ -130,7 +123,7 @@ bool Renderer::loadShaders(const std::string& vertexShaderPath, const std::strin
     glCompileShader(fragmentShader);
     checkShaderCompileErrors(fragmentShader, "FRAGMENT");
 
-    shaderProgram = glCreateProgram();
+    GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
@@ -140,11 +133,15 @@ bool Renderer::loadShaders(const std::string& vertexShaderPath, const std::strin
     glDeleteShader(fragmentShader);
 
     // Get uniform location after shader program is created and linked
-    colorUniformLocation = glGetUniformLocation(shaderProgram, "triangleColor");
+    GLint colorUniformLocation = glGetUniformLocation(shaderProgram, "shapeColor");
     if (colorUniformLocation == -1) {
-        std::cerr << "Failed to get uniform location for triangleColor" << std::endl;
+        std::cerr << "Failed to get uniform location for shapeColor in shader: " << name << std::endl;
         return false;
     }
+
+    // Store the shader program and its uniform location
+    shaderPrograms[name] = shaderProgram;
+    colorUniformLocations[name] = colorUniformLocation;
 
     return true;
 }
@@ -215,7 +212,7 @@ void Renderer::displayFPS() {
     glPopMatrix();
 
     // Re-enable shader program
-    glUseProgram(shaderProgram);
+    glUseProgram(shaderPrograms["default"]);
 }
 
 void Renderer::limitFPS() {
@@ -266,29 +263,45 @@ void Renderer::createSquare() {
 }
 
 void Renderer::createCircle() {
-    const int segments = 32;
-    std::vector<float> vertices;
-    vertices.reserve(segments * 3 + 3);  // +3 for center point
-
-    // Center point
-    vertices.push_back(0.0f);
-    vertices.push_back(0.0f);
-    vertices.push_back(0.0f);
-
-    // Circle points
-    for (int i = 0; i <= segments; i++) {
-        float angle = 2.0f * 3.14159f * float(i) / float(segments);
-        vertices.push_back(0.5f * cos(angle));
-        vertices.push_back(0.5f * sin(angle));
-        vertices.push_back(0.0f);
-    }
+    // Create a simple quad that will be used to draw the circle
+    float vertices[] = {
+        -0.5f, -0.5f, 0.0f,
+         0.5f, -0.5f, 0.0f,
+         0.5f,  0.5f, 0.0f,
+        -0.5f,  0.5f, 0.0f
+    };
+    unsigned int indices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
 
     glGenVertexArrays(1, &circleVAO);
     glGenBuffers(1, &circleVBO);
+    GLuint EBO;
+    glGenBuffers(1, &EBO);
 
     glBindVertexArray(circleVAO);
     glBindBuffer(GL_ARRAY_BUFFER, circleVBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+}
+
+void Renderer::createTriangle() {
+    float vertices[] = {
+        -0.5f, -0.5f, 0.0f,
+         0.5f, -0.5f, 0.0f,
+         0.0f,  0.5f, 0.0f
+    };
+    glGenVertexArrays(1, &triangleVAO);
+    glGenBuffers(1, &triangleVBO);
+
+    glBindVertexArray(triangleVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, triangleVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
@@ -325,9 +338,6 @@ void Renderer::render() {
     glClearColor(backgroundColor[0], backgroundColor[1], backgroundColor[2], 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // Use our shader program
-    glUseProgram(shaderProgram);
-
     // Update time using real time instead of frame-based time
     double currentTime = glfwGetTime();
     time = static_cast<float>(currentTime * animationSpeed);
@@ -336,28 +346,36 @@ void Renderer::render() {
     time = fmod(time, 2.0f * 3.14159f);
 
     // Set color based on mode
+    float red, green, blue;
     if (rainbowMode) {
-        float red = (sin(time) + 1.0f) / 2.0f;
-        float green = (sin(time + 2.0944f) + 1.0f) / 2.0f;
-        float blue = (sin(time + 4.1888f) + 1.0f) / 2.0f;
-        glUniform4f(colorUniformLocation, red, green, blue, 1.0f);
+        red = (sin(time) + 1.0f) / 2.0f;
+        green = (sin(time + 2.0944f) + 1.0f) / 2.0f;
+        blue = (sin(time + 4.1888f) + 1.0f) / 2.0f;
     } else {
-        glUniform4f(colorUniformLocation, shapeColor[0], shapeColor[1], shapeColor[2], 1.0f);
+        red = shapeColor[0];
+        green = shapeColor[1];
+        blue = shapeColor[2];
     }
 
     // Draw current shape
     switch (currentShape) {
         case 0:  // Triangle
-            glBindVertexArray(VAO);
+            glUseProgram(shaderPrograms["default"]);
+            glUniform4f(colorUniformLocations["default"], red, green, blue, 1.0f);
+            glBindVertexArray(triangleVAO);
             glDrawArrays(GL_TRIANGLES, 0, 3);
             break;
         case 1:  // Square
+            glUseProgram(shaderPrograms["default"]);
+            glUniform4f(colorUniformLocations["default"], red, green, blue, 1.0f);
             glBindVertexArray(squareVAO);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             break;
         case 2:  // Circle
+            glUseProgram(shaderPrograms["circle"]);
+            glUniform4f(colorUniformLocations["circle"], red, green, blue, 1.0f);
             glBindVertexArray(circleVAO);
-            glDrawArrays(GL_TRIANGLE_FAN, 0, 34);  // 32 segments + center + first point
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             break;
     }
     glBindVertexArray(0);
@@ -372,18 +390,24 @@ void Renderer::render() {
 
 void Renderer::cleanup() {
     cleanupShapes();
-    if (VAO) {
-        glDeleteVertexArrays(1, &VAO);
-        VAO = 0;
+    if (triangleVAO) {
+        glDeleteVertexArrays(1, &triangleVAO);
+        triangleVAO = 0;
     }
-    if (VBO) {
-        glDeleteBuffers(1, &VBO);
-        VBO = 0;
+    if (triangleVBO) {
+        glDeleteBuffers(1, &triangleVBO);
+        triangleVBO = 0;
     }
-    if (shaderProgram) {
-        glDeleteProgram(shaderProgram);
-        shaderProgram = 0;
+    
+    // Clean up all shader programs
+    for (const auto& [name, program] : shaderPrograms) {
+        if (program) {
+            glDeleteProgram(program);
+        }
     }
+    shaderPrograms.clear();
+    colorUniformLocations.clear();
+
     if (window) {
         glfwDestroyWindow(window);
         window = nullptr;
